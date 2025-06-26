@@ -23,20 +23,26 @@ def get_asin_data(country):
     )
     try:
         product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
+        print(product_data)
         listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
-        print(listPrice)
+        buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
+        lowestFBA = product_data.payload.get('Summary').get('LowestPrices')[1].get('LandedPrice').get('Amount')
+        lowestNONFBA = product_data.payload.get('Summary').get('LowestPrices')[2].get('LandedPrice').get('Amount')
+        salesRank = product_data.payload.get('Summary').get('SalesRankings')[0].get('Rank')
         return jsonify({'asin':asin,
-                        'listPrice':listPrice, 
                         'Title': '', 
                         'Image URL': '', 
                         'Product URL': '', 
-                        'SalesRank': '', 
-                        'BuyBox Total': '', 
-                        'Lowest FBA': '', 
-                        'List Price': '', 
+                        'SalesRank': salesRank, 
+                        'BuyBox Total': buyBoxPrice, 
+                        'Lowest FBA': lowestFBA, 
+                        'List Price': listPrice, 
+                        'Lowest NonFBA': lowestNONFBA,
+                        'Product URL': 'https://www.amazon.com/dp/'+asin,
                         'success': True}), 200
     except Exception as e:
-        console.log(e)
+        print(asin)
+        print(e)
         return jsonify({'asin':asin, 'success': False}), 400
     # listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
     # buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
