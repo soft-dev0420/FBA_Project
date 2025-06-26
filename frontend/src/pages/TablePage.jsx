@@ -32,7 +32,10 @@ const TablePage = () => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         console.log(jsonData);
-        const asins = jsonData.map(row => row[0]).filter(Boolean);
+        // const asins = jsonData.filter((col) => col[0].toUpperCase() === 'ASIN').shift();;
+        const index = jsonData[0].findIndex(item=>item.toUpperCase()==='ASIN');
+        const allasins = jsonData.map(row => row[index]);//.filter(item=>item!=='ASIN' || typeof item === 'string');
+        const asins = allasins.filter(item => typeof item === 'string' && item !== 'ASIN');
         setAsinsCount(asins.length);
 
         if (asins.length > 0) {
@@ -55,10 +58,10 @@ const TablePage = () => {
   console.log(data);
 
   return (
-    <Container fluid className="py-2 min-vh-80">
+    <Container fluid className="py-2 min-vh-100">
       <Row className="justify-content-center">
         <Col xs={12} xl={10}>
-          <Card className="shadow-lg border-0">
+          <Card className="shadow-lg border-0 w-100">
             <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center rounded-top py-4">
               <div className="d-flex align-items-center">
                 <i className="bi bi-table fs-3 me-2"></i>

@@ -13,41 +13,66 @@ marketplace_map = {
 
 asins_bp = Blueprint('items', __name__)
 
+#test data using get
+@asins_bp.route('/<string:asin>', methods=['GET'])
+def get_asin_test_data(asin):
+    res = asin_data(asin, 'US')
+    if res.get('success'):
+        return jsonify(res), 200
+    else:
+        return jsonify(res), 400
+
+#test data using post
 @asins_bp.route('/<string:country>', methods=['POST'])
 def get_asin_data(country):
     data = request.get_json()
     asin = data.get('asin')
+    res = asin_data(asin, 'US')
+    if res.get('success'):
+        return jsonify(res), 200
+    else:
+        return jsonify(res), 400
+
+    
+def asin_data(asin, country):
     products = Products(
-        marketplace=marketplace_map['US'], 
+        marketplace=marketplace_map[country], 
         credentials=credentials
     )
-    try:
-        product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
-        print(product_data)
-        listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
-        buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
-        lowestFBA = product_data.payload.get('Summary').get('LowestPrices')[1].get('LandedPrice').get('Amount')
-        lowestNONFBA = product_data.payload.get('Summary').get('LowestPrices')[2].get('LandedPrice').get('Amount')
-        salesRank = product_data.payload.get('Summary').get('SalesRankings')[0].get('Rank')
-        return jsonify({'asin':asin,
-                        'Title': '', 
-                        'Image URL': '', 
-                        'Product URL': '', 
-                        'SalesRank': salesRank, 
-                        'BuyBox Total': buyBoxPrice, 
-                        'Lowest FBA': lowestFBA, 
-                        'List Price': listPrice, 
-                        'Lowest NonFBA': lowestNONFBA,
-                        'Product URL': 'https://www.amazon.com/dp/'+asin,
-                        'success': True}), 200
-    except Exception as e:
-        print(asin)
-        print(e)
-        return jsonify({'asin':asin, 'success': False}), 400
-    # listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
-    # buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
-    # landedPrice = product_data.payload.get('Summary').get('LowestPrices')[0].get('LandedPrice').get('Amount')
-    
+    validnumber = 3
+    for i in range(0,validnumber):
+        try:
+            product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
+            print(product_data.payload)
+            listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
+            print("listPrice", listPrice)
+            buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
+            print("buyboxprice", buyBoxPrice)
+            lowestFBA = product_data.payload.get('Summary').get('LowestPrices')[1].get('LandedPrice').get('Amount')
+            print("lowestFBA", lowestFBA)
+            lowestNONFBA = product_data.payload.get('Summary').get('LowestPrices')[2].get('LandedPrice').get('Amount')
+            print("lowestNONFBA", lowestNONFBA)
+            if 'SalesRankings' in product_data.payload.get('Summary') and i==validnumber-1:
+                salesRank = product_data.payload.get('Summary').get('SalesRankings')[0].get('Rank')
+            else:
+                salesRank = 0
+            print("salesrank", salesRank)
+            return {'asin':asin,
+                            'Title': '', 
+                            'Image URL': '', 
+                            'Product URL': '', 
+                            'SalesRank': salesRank, 
+                            'BuyBox Total': buyBoxPrice, 
+                            'Lowest FBA': lowestFBA, 
+                            'List Price': listPrice, 
+                            'Lowest NonFBA': lowestNONFBA,
+                            'Product URL': 'https://www.amazon.com/dp/'+asin,
+                            'success': True}
+        except Exception as e:
+            if i == validnumber-1:
+                return {'asin':asin, 'success': False}
+        
+   
 
 #GET /<country>?asin
 # @asins_bp.route('/<string:country>', methods=['POST'] )
