@@ -28,6 +28,8 @@ export const fetchExcelData = createAsyncThunk(
           })
           .catch(error => {
             errorData = [...errorData, asin];
+            const progress = ((i + 1) / asins.length) * 100;
+            dispatch(setPercent(progress));
           });
       }
 

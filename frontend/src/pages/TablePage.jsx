@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import * as XLSX from 'xlsx';
-import TableComponent from '../components/TableComponent';
 import LoadingComponent from '../components/LoadingComponent';
 import { fetchExcelData, clearData } from '../redux/reducers/excelReducer';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
@@ -32,7 +31,7 @@ const TablePage = () => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
+        console.log(jsonData);
         const asins = jsonData.map(row => row[0]).filter(Boolean);
         setAsinsCount(asins.length);
 
@@ -186,7 +185,7 @@ const TablePage = () => {
                     accept=".xlsx, .xls"
                     onChange={handleFileUpload}
                   />
-                  <div className="table-responsive">
+                  <div className='table-container'>
                     {/* <TableComponent data={data}/> */}
                     <DataDisplayComponent />
                   </div>
