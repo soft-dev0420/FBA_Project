@@ -34,80 +34,77 @@ const App = () => {
               <div className="app-overlay" />
               <div className="app-content">
                 <Header0 />
-                <main className="flex-grow-1 container my-4">
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/login" element={<SignIn />} />
-                    <Route path="/signup" element={<SignUp />} />
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/login" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
 
-                    {/* Protected routes - Each route individually wrapped */}
-                    <Route
-                      path="/"
-                      element={
-                        <PrivateRoute>
-                          <Home0 />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/products0"
-                      element={
-                        <PrivateRoute>
-                          <ProductDetail0 />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/export0"
-                      element={
-                        <PrivateRoute>
-                          <ExportPage0 />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/boxsummary0"
-                      element={
-                        <PrivateRoute>
-                          <BoxSummary0 />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/shipments"
-                      element={
-                        <PrivateRoute>
-                          <ShipmentsPage />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/importSummary"
-                      element={
-                        <PrivateRoute>
-                          <ImportSummary />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/multiAdd"
-                      element={
-                        <PrivateRoute>
-                          <MultiAdd />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/graph"
-                      element={
-                        <PrivateRoute>
-                          <TablePage />
-                        </PrivateRoute>
-                      }
-                    />
-                  </Routes>
-
-                </main>
+                  {/* Protected routes - Each route individually wrapped */}
+                  <Route
+                    path="/"
+                    element={
+                      <PrivateRoute>
+                        <Home0 />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/products0"
+                    element={
+                      <PrivateRoute>
+                        <ProductDetail0 />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/export0"
+                    element={
+                      <PrivateRoute>
+                        <ExportPage0 />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/boxsummary0"
+                    element={
+                      <PrivateRoute>
+                        <BoxSummary0 />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/shipments"
+                    element={
+                      <PrivateRoute>
+                        <ShipmentsPage />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/importSummary"
+                    element={
+                      <PrivateRoute>
+                        <ImportSummary />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/multiAdd"
+                    element={
+                      <PrivateRoute>
+                        <MultiAdd />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/graph"
+                    element={
+                      <PrivateRoute>
+                        <TablePage />
+                      </PrivateRoute>
+                    }
+                  />
+                </Routes>
                 <Footer />
               </div>
             </div>

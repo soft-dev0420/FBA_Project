@@ -174,7 +174,7 @@ const ShipmentsPage = () => {
   };
 
   return (
-    <div className="container py-5">
+    <div className="container fba-manager-app py-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Shipments</h2>
       </div>

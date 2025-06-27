@@ -19,7 +19,6 @@ const Footer = () => {
 
   return (
     <footer className="footer-container">
-      <div className="footer-gradient-overlay"></div>
 
       {/* Main Footer Content */}
       <div className="container position-relative py-5">

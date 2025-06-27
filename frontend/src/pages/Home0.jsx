@@ -12,9 +12,9 @@ import { Link } from "react-router-dom";
 
 const Home0 = () => {
   return (
-    <div className="fba-manager-app">
+    <div className="container fba-manager-app">
       {/* Main Content */}
-      <div className="container position-relative py-5 row justify-content-center ">
+      <div className="container position-relative px-3 py-5 row justify-content-center ">
         <div className="mb-4">
           <h1 className="display-5 fw-bold text-primary mb-2 d-flex align-items-center justify-content-center">
             <BoxSeam className="me-3" size={45} />
