@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from sp_api.api import CatalogItems, Products, Catalog, CatalogItemsVersion
-from sp_api.base import Marketplaces, SellingApiException
+from sp_api.api import CatalogItems, Products, CatalogItemsVersion
+from sp_api.base import Marketplaces
 from credential import credentials
 
 marketplace_map = {
