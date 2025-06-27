@@ -27,6 +27,7 @@ def internal_error(error):
 def health_check():
     return jsonify({'status': 'healthy', 'message': 'FBA Backend is running'})
 
+    
 if __name__ == "__main__":
     # Use environment variable for port, default to 8000
     port = int(os.environ.get('PORT', 5000))

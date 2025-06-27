@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from sp_api.api import CatalogItems, Products
+from sp_api.api import CatalogItems, Products, Catalog, CatalogItemsVersion
 from sp_api.base import Marketplaces, SellingApiException
 from credential import credentials
 
@@ -37,154 +37,94 @@ def get_asin_data(country):
 def asin_data(asin, country):
     products = Products(
         marketplace=marketplace_map[country], 
-        credentials=credentials
+        credentials=credentials,
+        
     )
+    catalogItems = CatalogItems(marketplace=marketplace_map[country], 
+        credentials=credentials,
+        version = CatalogItemsVersion.V_2022_04_01
+    )
+    
     validnumber = 3
     for i in range(0,validnumber):
         try:
             product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
-            print(product_data.payload)
-            listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
-            print("listPrice", listPrice)
+            data = catalogItems.get_catalog_item(
+                    asin=asin,
+                    marketplaceIds=[marketplace_map[country.upper()].marketplace_id],
+                    includedData=['summaries', 'images', 'productTypes', 'salesRanks','attributes', 'dimensions']
+                )
+            
+            
+            productTypes = data.payload.get('productTypes')
+            product_Type = productTypes[0].get('productType')
+                     
+            images = data.payload.get('images')
+            image = images[0].get('images')[0].get('link')
+            
+            salesRanks = data.payload.get('salesRanks')
+
+            sales_Rank = salesRanks[0].get('displayGroupRanks')[0].get('rank')
+            
+            attributes = data.payload.get("attributes")
+            item_dimension = attributes.get('item_dimensions')
+            width = str(item_dimension[0].get('width').get('value')) + item_dimension[0].get('width').get('unit')
+            length = str(item_dimension[0].get('length').get('value')) + item_dimension[0].get('length').get('unit')
+            height = str(item_dimension[0].get('height').get('value')) + item_dimension[0].get('height').get('unit')
+            weight = str(attributes.get('item_weight')[0].get('value')) + attributes.get('item_weight')[0].get('unit')
+            
+            item_package_dimensions = attributes.get('item_package_dimensions')
+            package_width = str(item_package_dimensions[0].get('width').get('value')) + item_package_dimensions[0].get('width').get('unit')
+            package_length = str(item_package_dimensions[0].get('length').get('value')) + item_package_dimensions[0].get('length').get('unit')
+            package_height = str(item_package_dimensions[0].get('height').get('value')) + item_package_dimensions[0].get('height').get('unit')
+            package_weight = str(attributes.get('item_package_weight')[0].get('value')) + attributes.get('item_package_weight')[0].get('unit')
+
+            item_name = attributes.get('item_name')
+            title = item_name[0].get('value')
+
+            edition_number = attributes.get('edition_number')
+            edition = edition_number[0].get('value')
+
+            publication_date = attributes.get('publication_date')
+            publication = publication_date[0].get('value').split('T')[0]
+
+            pages = attributes.get('pages')
+            numberPage = pages[0].get('value')
+
+            list_price = str(attributes.get('list_price')[0].get('value')) + attributes.get('list_price')[0].get('currency')
+            binding = attributes.get('binding')[0].get('value')
+            manufacturer = attributes.get('manufacturer')[0].get('value')
             buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
-            print("buyboxprice", buyBoxPrice)
             lowestFBA = product_data.payload.get('Summary').get('LowestPrices')[1].get('LandedPrice').get('Amount')
-            print("lowestFBA", lowestFBA)
-            lowestNONFBA = product_data.payload.get('Summary').get('LowestPrices')[2].get('LandedPrice').get('Amount')
-            print("lowestNONFBA", lowestNONFBA)
-            if 'SalesRankings' in product_data.payload.get('Summary') and i==validnumber-1:
-                salesRank = product_data.payload.get('Summary').get('SalesRankings')[0].get('Rank')
-            else:
-                salesRank = 0
-            print("salesrank", salesRank)
+            lowestNONFBA = product_data.payload.get('Summary').get('LowestPrices')[-1].get('ListingPrice').get('Amount')
+
             return {'asin':asin,
-                            'Title': '', 
-                            'Image URL': '', 
-                            'Product URL': '', 
-                            'SalesRank': salesRank, 
-                            'BuyBox Total': buyBoxPrice, 
-                            'Lowest FBA': lowestFBA, 
-                            'List Price': listPrice, 
-                            'Lowest NonFBA': lowestNONFBA,
-                            'Product URL': 'https://www.amazon.com/dp/'+asin,
-                            'success': True}
+                    'SalesRank': sales_Rank,
+                    'Title': title, 
+                    'Edition': edition,
+                    'Publication Date': publication, 
+                    'Format': '',
+                    'Number of Pages': numberPage,
+                    'BuyBox Total': buyBoxPrice, 
+                    'Lowest FBA': lowestFBA,
+                    'Lowest NonFBA': lowestNONFBA,
+                    'List Price': list_price, 
+                    'Product Type': product_Type,
+                    'Binding': binding,
+                    'Manufacturer' : manufacturer,
+                    'Width': width,
+                    'Length': length,
+                    'Height' : height,
+                    'Weight': weight,
+                    'Package Width': package_width,
+                    'Package Length': package_length,
+                    'Package Height': package_height,
+                    'Package Weight': package_weight,
+                    'Product URL': 'https://www.amazon.com/dp/'+asin,
+                    'Image': image, 
+                    'success': True
+                    }
         except Exception as e:
             if i == validnumber-1:
                 return {'asin':asin, 'success': False}
         
-   
-
-#GET /<country>?asin
-# @asins_bp.route('/<string:country>', methods=['POST'] )
-# def get_OneAsin(country):
-#     data = request.get_json()
-#     asins = data.get('asins')
-#     catalog_items = CatalogItems(
-#         marketplace=marketplace_map[country.upper()], 
-#         credentials=credentials
-#     )
-
-#     products = Products(
-#         marketplace=marketplace_map['US'], 
-#         credentials=credentials
-#     )
-    
-
-#     data = []
-#     price_list = []
-#     for asin in asins:
-#         try:
-#             item = catalog_items.search_catalog_items(
-#                     keywords=[asin],
-#                     marketplaceIds=[marketplace_map[country.upper()].marketplace_id],
-#                     includedData=['summaries', 'images', 'productTypes', 'salesRanks']
-#                 )
-#             product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
-#             listPrice = product_data.payload.get('Summary').get('ListPrice').get('Amount')
-#             buyBoxPrice = product_data.payload.get('Summary').get('BuyBoxPrices')[0].get('LandedPrice').get('Amount')
-#             landedPrice = product_data.payload.get('Summary').get('LowestPrices')[0].get('LandedPrice').get('Amount')
-#             # Convert items() tuple to dictionary
-#             payload_dict = dict(item.payload.items())
-#             data.append({'items': payload_dict.get('items', [])})
-#             price_list.append({asin:{'listPrice': listPrice, 'buyBoxPrice': buyBoxPrice, 'landedPrice': landedPrice}})
-#         except Exception as e:
-#             print(f"Error fetching data for ASIN {asin}: {e}")
-#             data.append({'items': []})
-#             price_list.append({asin:{'listPrice': '-', 'buyBoxPrice': '-', 'landedPrice': '-'}})
-    
-#     product_list = []
-#     found_asins = set()
-#     print(price_list);
-#     for item_data in data:
-#         items = item_data.get('items', [])
-#         for item in items:
-#             asin = item.get('asin')
-#             if asin:
-#                 found_asins.add(asin)
-#                 product_type = item.get('productTypes', [{}])[0].get('productType') if item.get('productTypes') else None
-                
-#                 # main image link (first image, variant MAIN)
-#                 images = item.get('images', [])
-#                 main_image_link = None
-#                 if images and images[0].get('images'):
-#                     for img in images[0]['images']:
-#                         if img.get('variant') == 'MAIN':
-#                             main_image_link = img['link']
-#                             break
-#                     if not main_image_link:
-#                         main_image_link = images[0]['images'][0]['link']
-                
-#                 # brandName, itemName, manufacturer from summaries
-#                 summaries = item.get('summaries', [{}])
-#                 summary = summaries[0] if summaries else {}
-#                 brand_name = summary.get('brandName')
-#                 item_name = summary.get('itemName')
-#                 manufacturer = summary.get('manufacturer')
-                
-#                 # Get sales rank with proper error handling
-#                 sales_rank = None
-#                 try:
-#                     sales_ranks = item.get('salesRanks', [])
-#                     if sales_ranks and len(sales_ranks) > 0:
-#                         ranks = sales_ranks[0].get('ranks', [])
-#                         if ranks and len(ranks) > 0:
-#                             sales_rank = ranks[0].get('value')
-#                 except (IndexError, KeyError, TypeError) as e:
-#                     print(f"Error getting sales rank for ASIN {asin}: {e}")
-#                     sales_rank = None
-#                 prices = info = next((item[asin] for item in price_list if asin in item), None)
-#                 print(prices)
-#                 if asin in asins:
-#                     product_list.append({
-#                         "exist": True,
-#                         "ASIN": asin,
-#                         "productType": product_type,
-#                         "Image URL": main_image_link,
-#                         "Title": item_name,
-#                         "Manufacturer": manufacturer,
-#                         "Product URL": "https://amazon.com/dp/" + asin,
-#                         "SalesRank": sales_rank,
-#                         "List Price": prices['listPrice'],
-#                         "BuyBox Total": prices['buyBoxPrice'],
-#                         "Lowest FBA": prices['landedPrice']
-#                     })
-    
-#     # Add entries for ASINs that were not found
-#     for asin in asins:
-#         if asin not in found_asins:
-#             product_list.append({
-#                 "exist": False,
-#                 "ASIN": asin,
-#             })
-    
-#     return jsonify(product_list)
-
-
-
-
-
-# POST /items/
-@asins_bp.route('/', methods=['POST'])
-def create_item():
-    data = request.get_json()
-    return jsonify({"item": data}), 201

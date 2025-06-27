@@ -35,7 +35,9 @@ const TablePage = () => {
         // const asins = jsonData.filter((col) => col[0].toUpperCase() === 'ASIN').shift();;
         const index = jsonData[0].findIndex(item=>item.toUpperCase()==='ASIN');
         const allasins = jsonData.map(row => row[index]);//.filter(item=>item!=='ASIN' || typeof item === 'string');
-        const asins = allasins.filter(item => typeof item === 'string' && item !== 'ASIN');
+        const asins = allasins.filter(item => typeof item === 'string');
+        asins.shift();
+        console.log(asins)
         setAsinsCount(asins.length);
 
         if (asins.length > 0) {
@@ -55,7 +57,6 @@ const TablePage = () => {
 
     reader.readAsBinaryString(file);
   };
-  console.log(data);
 
   return (
     <Container fluid className="py-2 min-vh-100">

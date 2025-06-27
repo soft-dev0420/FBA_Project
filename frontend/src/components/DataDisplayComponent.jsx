@@ -330,9 +330,12 @@ const DataDisplayComponent = () => {
                   <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'table-light' : ''}>
                     {keys.map((key, colIndex) => (
                       <td key={colIndex} className="border-0 py-3 px-3">
-                        <span className="text-truncate d-inline-block" style={{ maxWidth: '200px' }}>
-                          {item[key] || '-'}
-                        </span>
+                        {
+                          key === "Image" ? <img src={item[key]} style={{ width: '100px', height: '150px' }} /> : key==="Product URL"?<a href = {item[key]}>Goto</a>:<span className="text-truncate d-inline-block" style={{ maxWidth: '200px' }}>
+                            {item[key] || '-'}
+                          </span>
+                        }
+                        
                       </td>
                     ))}
                   </tr>

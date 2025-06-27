@@ -22,6 +22,7 @@ export const fetchExcelData = createAsyncThunk(
         const asin = asins[i];
         await axios.post(`${apiUrl}/asin/${country}`, { asin: asin })
           .then(response => {
+            delete response.data['success']
             displayData = [...displayData, response.data];
             const progress = ((i + 1) / asins.length) * 100;
             dispatch(setPercent(progress));
