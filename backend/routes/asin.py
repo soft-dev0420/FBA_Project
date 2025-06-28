@@ -1,19 +1,8 @@
 from flask import Blueprint, request, jsonify
-from sp_api.api import CatalogItems, Products, CatalogItemsVersion
-from sp_api.base import Marketplaces
+from sp_api.api import CatalogItems, Products, CatalogItemsVersion, ProductFees, Sales
+from sp_api.base import Marketplaces, Granularity
 from credential import credentials
-from config import Config
-import time
-import asyncio
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import wraps
-import logging
 from datetime import datetime, timedelta
-
-# Configure logging
-logging.basicConfig(level=getattr(logging, Config.LOG_LEVEL))
-logger = logging.getLogger(__name__)
 
 marketplace_map = {
     'US': Marketplaces.US,
@@ -22,42 +11,8 @@ marketplace_map = {
     'UK': Marketplaces.UK,
     # add other marketplaces as needed
 }
-
+granularity = Granularity
 asins_bp = Blueprint('items', __name__)
-
-class RateLimiter:
-    def __init__(self, max_calls, window_seconds):
-        self.max_calls = max_calls
-        self.window_seconds = window_seconds
-        self.calls = []
-        self.lock = threading.Lock()
-    
-    def acquire(self):
-        with self.lock:
-            now = time.time()
-            # Remove calls outside the window
-            self.calls = [call_time for call_time in self.calls if now - call_time < self.window_seconds]
-            
-            if len(self.calls) >= self.max_calls:
-                # Wait until we can make another call
-                sleep_time = self.window_seconds - (now - self.calls[0])
-                if sleep_time > 0:
-                    logger.info(f"Rate limit reached, waiting {sleep_time:.2f} seconds")
-                    time.sleep(sleep_time)
-                    return self.acquire()
-            
-            self.calls.append(now)
-            return True
-
-# Global rate limiter
-rate_limiter = RateLimiter(Config.RATE_LIMIT_CALLS, Config.RATE_LIMIT_WINDOW)
-
-def rate_limit(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        rate_limiter.acquire()
-        return func(*args, **kwargs)
-    return wrapper
 
 #test data using get
 @asins_bp.route('/<string:asin>', methods=['GET'])
@@ -79,94 +34,7 @@ def get_asin_data(country):
     else:
         return jsonify(res), 400
 
-# New endpoint for batch processing
-@asins_bp.route('/batch/<string:country>', methods=['POST'])
-def get_batch_asin_data(country):
-    data = request.get_json()
-    asins = data.get('asins', [])
-    
-    if not asins:
-        return jsonify({'error': 'No ASINs provided'}), 400
-    
-    if len(asins) > Config.MAX_BATCH_SIZE:
-        return jsonify({'error': f'Maximum {Config.MAX_BATCH_SIZE} ASINs per batch'}), 400
-    
-    # Process ASINs in parallel with rate limiting
-    results = process_batch_asins(asins, country)
-    
-    return jsonify({
-        'results': results,
-        'total_requested': len(asins),
-        'successful': len([r for r in results if r.get('success')]),
-        'failed': len([r for r in results if not r.get('success')]),
-        'success_rate': f"{(len([r for r in results if r.get('success')]) / len(asins)) * 100:.1f}%"
-    }), 200
-
-def process_batch_asins(asins, country):
-    """Process multiple ASINs with proper rate limiting and error handling"""
-    results = []
-    start_time = time.time()
-    
-    logger.info(f"Starting batch processing of {len(asins)} ASINs for country {country}")
-    
-    # Use ThreadPoolExecutor for controlled concurrency
-    with ThreadPoolExecutor(max_workers=Config.MAX_WORKERS) as executor:
-        # Submit all tasks
-        future_to_asin = {
-            executor.submit(asin_data_with_retry, asin, country): asin 
-            for asin in asins
-        }
-        
-        # Collect results as they complete
-        for future in as_completed(future_to_asin):
-            asin = future_to_asin[future]
-            try:
-                result = future.result(timeout=Config.REQUEST_TIMEOUT)
-                results.append(result)
-                logger.info(f"Processed ASIN {asin}: {'Success' if result.get('success') else 'Failed'}")
-            except Exception as e:
-                logger.error(f"Error processing ASIN {asin}: {str(e)}")
-                results.append({
-                    'asin': asin,
-                    'success': False,
-                    'error': str(e)
-                })
-    
-    elapsed_time = time.time() - start_time
-    logger.info(f"Batch processing completed in {elapsed_time:.2f} seconds")
-    
-    return results
-
-def asin_data_with_retry(asin, country, max_retries=None):
-    """Wrapper function with retry logic and better error handling"""
-    if max_retries is None:
-        max_retries = Config.MAX_RETRIES
-        
-    for attempt in range(max_retries):
-        try:
-            result = asin_data(asin, country)
-            if result.get('success'):
-                return result
-            else:
-                logger.warning(f"ASIN {asin} failed on attempt {attempt + 1}")
-                if attempt < max_retries - 1:
-                    delay = Config.RETRY_DELAY_BASE ** attempt
-                    logger.info(f"Retrying ASIN {asin} in {delay} seconds")
-                    time.sleep(delay)  # Exponential backoff
-        except Exception as e:
-            logger.error(f"ASIN {asin} error on attempt {attempt + 1}: {str(e)}")
-            if attempt < max_retries - 1:
-                delay = Config.RETRY_DELAY_BASE ** attempt
-                logger.info(f"Retrying ASIN {asin} in {delay} seconds")
-                time.sleep(delay)
-    
-    return {
-        'asin': asin,
-        'success': False,
-        'error': 'Max retries exceeded'
-    }
-
-@rate_limit
+# New endpoint for batch processing    
 def asin_data(asin, country):
     """Original asin_data function with rate limiting"""
     try:
@@ -179,6 +47,12 @@ def asin_data(asin, country):
             credentials=credentials,
             version=CatalogItemsVersion.V_2022_04_01
         )
+        
+        productFees = ProductFees( marketplace=marketplace_map[country], 
+            credentials=credentials)
+        
+        sales = Sales(marketplace=marketplace_map[country], 
+            credentials=credentials)
         
         # Get product offers
         product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
@@ -275,6 +149,41 @@ def asin_data(asin, country):
             if lowest_prices:
                 lowestNONFBA = lowest_prices[-1].get('ListingPrice', {}).get('Amount', 0)
         
+        fee_data = productFees.get_product_fees_estimate_for_asin(asin,  price= buyBoxPrice, is_fba=True).payload
+        fee_list = fee_data.get('FeesEstimateResult').get('FeesEstimate').get('FeeDetailList')
+        referral_fee = 0
+        fba_fee = 0
+        closing_fee =0
+        for fee in fee_list:
+            fee_type = fee.get('FeeType')
+            amount = fee.get('FinalFee', {}).get('Amount', 0)
+            if fee_type == 'ReferralFee':
+                referral_fee = amount
+            elif fee_type == 'VariableClosingFee':
+                closing_fee = amount
+            else:
+                fba_fee = amount
+        nowTime = datetime.utcnow().isoformat() + 'Z'
+        past7time = (datetime.utcnow()-timedelta(days=7)).isoformat() + 'Z'
+        past30time = (datetime.utcnow()-timedelta(days=30)).isoformat() + 'Z'
+        
+        sold_7days = sales.get_order_metrics(interval=(past7time, nowTime), 
+                                               granularity = Granularity.DAY, 
+                                               granularityTimeZone='US/Central', 
+                                               asin=asin).payload
+        sold_30days = sales.get_order_metrics(interval=(past30time, nowTime), 
+                                               granularity = Granularity.DAY, 
+                                               granularityTimeZone='US/Central', 
+                                               asin=asin).payload
+        sum_7day = 0
+        sum_30day = 0
+        for day in sold_7days:
+            if day.get('orderItemCount') != 0:
+                sum_7day +=1
+        for day in sold_30days:
+            if day.get('orderItemCount') != 0:
+                sum_30day +=1
+                
         return {
             'asin': asin,
             'SalesRank': sales_Rank,
@@ -300,11 +209,15 @@ def asin_data(asin, country):
             'Package Weight': package_weight,
             'Product URL': f'https://www.amazon.com/dp/{asin}',
             'Image': image, 
+            'Referal Fee': referral_fee,
+            'Closing Fee': closing_fee,
+            'FBA fee': fba_fee,
+            'Sold - 7 Days': sum_7day,
+            'Sold - 30 Days': sum_30day,
             'success': True
         }
         
     except Exception as e:
-        logger.error(f"Error processing ASIN {asin}: {str(e)}")
         return {
             'asin': asin, 
             'success': False, 
