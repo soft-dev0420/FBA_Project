@@ -3,6 +3,8 @@ from sp_api.api import CatalogItems, Products, CatalogItemsVersion, ProductFees,
 from sp_api.base import Marketplaces, Granularity
 from credential import credentials
 from datetime import datetime, timedelta
+import time
+from sp_api.base import SellingApiException
 
 marketplace_map = {
     'US': Marketplaces.US,
@@ -13,6 +15,20 @@ marketplace_map = {
 }
 granularity = Granularity
 asins_bp = Blueprint('items', __name__)
+
+def retry_on_quota(func, *args, max_retries=5, wait_seconds=10, **kwargs):
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except SellingApiException as e:
+            if "quota" in str(e).lower() or "You exceeded your quota" in str(e):
+                if attempt < max_retries - 1:
+                    print(f"Quota exceeded, retrying in {wait_seconds} seconds... (attempt {attempt+1})")
+                    time.sleep(wait_seconds)
+                else:
+                    raise
+            else:
+                raise
 
 #test data using get
 @asins_bp.route('/<string:asin>', methods=['GET'])
@@ -28,7 +44,8 @@ def get_asin_test_data(asin):
 def get_asin_data(country):
     data = request.get_json()
     asin = data.get('asin')
-    res = asin_data(asin, country)
+    res = retry_on_quota(asin_data, asin, country)
+    # res = asin_data(asin, country)
     if res.get('success'):
         return jsonify(res), 200
     else:
@@ -55,10 +72,11 @@ def asin_data(asin, country):
             credentials=credentials)
         
         # Get product offers
-        product_data = products.get_item_offers(asin, item_condition='New', customer_type='Consumer')
+        product_data = retry_on_quota(products.get_item_offers, asin, item_condition='New', customer_type='Consumer')
         
         # Get catalog item data
-        data = catalogItems.get_catalog_item(
+        data = retry_on_quota(
+            catalogItems.get_catalog_item,
             asin=asin,
             marketplaceIds=[marketplace_map[country.upper()].marketplace_id],
             includedData=['summaries', 'images', 'productTypes', 'salesRanks','attributes', 'dimensions']
@@ -149,7 +167,7 @@ def asin_data(asin, country):
             if lowest_prices:
                 lowestNONFBA = lowest_prices[-1].get('ListingPrice', {}).get('Amount', 0)
         
-        fee_data = productFees.get_product_fees_estimate_for_asin(asin,  price= buyBoxPrice, is_fba=True).payload
+        fee_data = retry_on_quota(productFees.get_product_fees_estimate_for_asin, asin,  price= buyBoxPrice, is_fba=True).payload
         fee_list = fee_data.get('FeesEstimateResult').get('FeesEstimate').get('FeeDetailList')
         referral_fee = 0
         fba_fee = 0
@@ -167,11 +185,11 @@ def asin_data(asin, country):
         past7time = (datetime.utcnow()-timedelta(days=7)).isoformat() + 'Z'
         past30time = (datetime.utcnow()-timedelta(days=30)).isoformat() + 'Z'
         
-        sold_7days = sales.get_order_metrics(interval=(past7time, nowTime), 
+        sold_7days = retry_on_quota(sales.get_order_metrics, interval=(past7time, nowTime), 
                                                granularity = Granularity.DAY, 
                                                granularityTimeZone='US/Central', 
                                                asin=asin).payload
-        sold_30days = sales.get_order_metrics(interval=(past30time, nowTime), 
+        sold_30days = retry_on_quota(sales.get_order_metrics, interval=(past30time, nowTime), 
                                                granularity = Granularity.DAY, 
                                                granularityTimeZone='US/Central', 
                                                asin=asin).payload
